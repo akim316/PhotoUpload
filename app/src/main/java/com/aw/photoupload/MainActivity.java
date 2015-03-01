@@ -11,6 +11,7 @@ import android.provider.MediaStore;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -19,9 +20,21 @@ import android.widget.EditText;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.TimePicker;
-import com.microsoft.azure.storage.*;
-import com.microsoft.azure.storage.blob.*;
 
+import com.firebase.client.Firebase;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.json.JSONObject;
+import org.w3c.dom.Text;
+
+import java.net.URI;
 import java.text.SimpleDateFormat;
 
 import java.io.File;
@@ -29,19 +42,22 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 
+import retrofit.RestAdapter;
 
 
 public class MainActivity extends ActionBarActivity {
     private Button button;
-    private TimePicker timePickerFrom;
-    private TimePicker timePickerTo;
     private TableRow pickerRow;
     private TableRow timeTextRow;
     private EditText nameField;
+    private EditText groupField;
     private TextView lockedInTime;
+
     private SimpleDateFormat sdf;
     private GregorianCalendar calendar;
     private File file;
+    private static int hour = 0;
+    private static int minutes = 0;
 
     //Azure stuff
     public static final String storageConnectionString =
@@ -58,14 +74,13 @@ public class MainActivity extends ActionBarActivity {
         button = (Button) findViewById(R.id.button1);
         button.setOnClickListener(cameraButtonOnClickListener);
         nameField = (EditText) findViewById(R.id.nameField);
-        timePickerFrom = (TimePicker) findViewById(R.id.timePickerFrom);
-        timePickerTo = (TimePicker) findViewById(R.id.timePickerTo);
-        pickerRow = (TableRow) findViewById(R.id.timePickerRow);
+        groupField = (EditText) findViewById(R.id.groupField);
         timeTextRow = (TableRow) findViewById(R.id.timeText);
         lockedInTime = (TextView) findViewById(R.id.lockedInTime);
         timeTextRow.setVisibility(View.GONE);
         calendar = new GregorianCalendar();
-        new MyTask().execute();
+        Firebase.setAndroidContext(this);
+        Firebase firebase = new Firebase("https://amber-heat-7766.firebaseio.com/");
 
     }
 
@@ -98,27 +113,13 @@ public class MainActivity extends ActionBarActivity {
             Intent imageIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             File folder = new File("/sdcard/pics/");
             folder.mkdirs();
-            if (timePickerFrom.getCurrentHour() <= calendar.get(Calendar.HOUR_OF_DAY)
-                    && timePickerFrom.getCurrentMinute() <= calendar.get(Calendar.MINUTE)
-                    && timePickerTo.getCurrentHour() >= calendar.get(Calendar.HOUR_OF_DAY)
-                    && timePickerTo.getCurrentMinute() >= calendar.get(Calendar.MINUTE)) {
-                pickerRow.setVisibility(View.GONE);
-                timeTextRow.setVisibility(View.VISIBLE);
-                int hourFrom = timePickerFrom.getCurrentHour();
-                String ampmFrom = "am";
-                String ampmTo = "am";
-                int hourTo = timePickerTo.getCurrentHour();
-                if (timePickerFrom.getCurrentHour() > 12) {
-                    hourFrom = hourFrom % 12;
-                    ampmFrom = "pm";
-                }
-                if (timePickerTo.getCurrentHour() > 12) {
-                    hourTo = hourTo % 12;
-                    ampmTo = "pm";
-                }
-                lockedInTime.setText("Time period set to: " + hourFrom + ":" + timePickerFrom.getCurrentMinute()
-                        + ampmFrom + " to " + hourTo + ":" + timePickerTo.getCurrentMinute() + ampmTo);
+            timeTextRow.setVisibility(View.VISIBLE);
+            lockedInTime.setText("Time period set until: " + hour + ":" + minutes);
+            nameField.setEnabled(false);
+            groupField.setEnabled(false);
 
+            if (hour < calendar.get(Calendar.HOUR_OF_DAY)
+                    && minutes < calendar.get(Calendar.MINUTE)) {
                 file = new File("/sdcard/pics/" + nameField.getText() + "_"
                         + sdf.format(new Date()) + ".png");
 
@@ -153,7 +154,8 @@ public class MainActivity extends ActionBarActivity {
 
         public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
             // Do something with the time chosen by the user
-
+            hour = hourOfDay;
+            minutes = minute;
         }
 
     }
@@ -162,19 +164,19 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         protected Void doInBackground(Void... params) {
-            try
-            {
-                CloudStorageAccount storageAccount = CloudStorageAccount.parse(storageConnectionString);
-                CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
-                CloudBlobContainer container = blobClient.getContainerReference("mycontainer");
-                container.createIfNotExists();
-                BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
-                containerPermissions.setPublicAccess(BlobContainerPublicAccessType.CONTAINER);
-                container.uploadPermissions(containerPermissions);
-            }
-            catch (Exception e)
-            {
-                // Output the stack trace.
+            try {
+                DefaultHttpClient httpclient = new DefaultHttpClient();
+                HttpPost httpost = new HttpPost("127.0.0.1");
+
+                StringEntity se = new StringEntity("rips.gg");
+                httpost.setEntity(se);
+                HttpResponse response = httpclient.execute(httpost);
+
+                System.out.println(response.toString());
+                //Do something with response...
+
+            } catch (Exception e) {
+                // show error
                 e.printStackTrace();
             }
             return null;

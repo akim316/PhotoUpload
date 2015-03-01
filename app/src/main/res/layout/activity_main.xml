@@ -6,12 +6,25 @@
     android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".SettingsActivity">
 
     <TableRow
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:gravity="center">
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/imageView"
+            android:src="@drawable/pu_logo" />
+    </TableRow>
+
+    <TableRow
         android:gravity="center">
         <EditText
             android:layout_width="match_parent"
             android:id="@+id/nameField"
             android:hint="Enter your name"
-            android:textAlignment="center" />
+            android:textAlignment="center"
+            android:clickable="false" />
     </TableRow>
     <TableRow
         android:gravity="center">
@@ -35,33 +48,25 @@
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true" />
     </TableRow>
+
+    <TableRow
+        android:gravity="center">
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pick Time"
+            android:onClick="showTimePickerDialog"
+            />
+    </TableRow>
+
     <TableRow
         android:gravity="center"
         android:id="@+id/timeText">
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/lockedInTime"/>
-    </TableRow>
-
-    <TableRow
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:id="@+id/timePickerRow"
-        android:gravity="center" >
-        <TimePicker
-            android:layout_gravity="center"
-            android:id="@+id/timePickerFrom"></TimePicker>
-        <TimePicker
-            android:layout_gravity="center"
-            android:id="@+id/timePickerTo"></TimePicker>
-    </TableRow>
-    <TableRow>
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pick Time"
-            android:onClick="showTimePickerDialog"/>
+            android:id="@+id/lockedInTime"
+            android:textAlignment="center"/>
     </TableRow>
 
 
