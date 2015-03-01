@@ -1,11 +1,16 @@
 package com.aw.photoupload;
 
-import android.app.ActionBar;
+import android.app.Dialog;
+import android.app.DialogFragment;
+import android.app.FragmentTransaction;
+import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.provider.MediaStore;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.text.format.DateFormat;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -14,20 +19,16 @@ import android.widget.EditText;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.TimePicker;
+import com.microsoft.azure.storage.*;
+import com.microsoft.azure.storage.blob.*;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 
 import java.io.File;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import com.microsoft.azure.storage.*;
-import com.microsoft.azure.storage.blob.*;
-import com.microsoft.azure.storage.file.CloudFile;
+
 
 
 public class MainActivity extends ActionBarActivity {
@@ -43,14 +44,10 @@ public class MainActivity extends ActionBarActivity {
     private File file;
 
     //Azure stuff
-    private CloudStorageAccount storageAccount;
-    private CloudBlobClient blobClient;
-    private CloudBlobContainer container;
     public static final String storageConnectionString =
             "DefaultEndpointsProtocol=http;" +
-                    "AccountName=photoupload15;" +
-                    "AccountKey=wruDWkG+5uPYpyILjluTv4sXHaMBcRmooGmPh9qy8+59lF+9Ftwvj5Wr0xDBeRMW46WccHQYqkcK6qlPJtjLiQ==";
-
+                    "AccountName=photoupload30;" +
+                    "AccountKey=DDee9X64JwLJEDuJig2sg2PkUh7d8Kr/NFqOYdPLBweybIdEh6qgRioWDpGYvPd1cdk/8U8J7H0N6cD4rFIX4w==";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,7 +65,8 @@ public class MainActivity extends ActionBarActivity {
         lockedInTime = (TextView) findViewById(R.id.lockedInTime);
         timeTextRow.setVisibility(View.GONE);
         calendar = new GregorianCalendar();
-        blobUpload();
+        new MyTask().execute();
+
     }
 
 
@@ -106,8 +104,20 @@ public class MainActivity extends ActionBarActivity {
                     && timePickerTo.getCurrentMinute() >= calendar.get(Calendar.MINUTE)) {
                 pickerRow.setVisibility(View.GONE);
                 timeTextRow.setVisibility(View.VISIBLE);
-                lockedInTime.setText("Time period set to: " + timePickerFrom.getCurrentHour() + ":" + timePickerFrom.getCurrentMinute()
-                    + " to " + timePickerTo.getCurrentHour() + ":" + timePickerTo.getCurrentMinute());
+                int hourFrom = timePickerFrom.getCurrentHour();
+                String ampmFrom = "am";
+                String ampmTo = "am";
+                int hourTo = timePickerTo.getCurrentHour();
+                if (timePickerFrom.getCurrentHour() > 12) {
+                    hourFrom = hourFrom % 12;
+                    ampmFrom = "pm";
+                }
+                if (timePickerTo.getCurrentHour() > 12) {
+                    hourTo = hourTo % 12;
+                    ampmTo = "pm";
+                }
+                lockedInTime.setText("Time period set to: " + hourFrom + ":" + timePickerFrom.getCurrentMinute()
+                        + ampmFrom + " to " + hourTo + ":" + timePickerTo.getCurrentMinute() + ampmTo);
 
                 file = new File("/sdcard/pics/" + nameField.getText() + "_"
                         + sdf.format(new Date()) + ".png");
@@ -116,30 +126,58 @@ public class MainActivity extends ActionBarActivity {
                 imageIntent.putExtra(MediaStore.EXTRA_OUTPUT, uriSavedImage);
             }
             startActivityForResult(imageIntent, 0);
-            blobUpload();
+
         }
     };
 
-    public void blobUpload() {
-        try {
-            // Retrieve storage account from connection-string.
-            storageAccount = CloudStorageAccount.parse(storageConnectionString);
 
-            // Create the blob client.
-            blobClient = storageAccount.createCloudBlobClient();
+    public void showTimePickerDialog(View v) {
+        DialogFragment newFragment = new TimePickerFragment();
+        newFragment.show(getFragmentManager(), "timePicker");
+    }
 
-            // Get a reference to a container.
-            // The container name must be lower case
-            container = blobClient.getContainerReference("mycontainer");
+    public static class TimePickerFragment extends DialogFragment
+            implements TimePickerDialog.OnTimeSetListener {
 
-            // Create the container if it does not exist.
-            container.createIfNotExists();
-            CloudBlockBlob blob = container.getBlockBlobReference("myimage.png");
-            File source = new File("C:\\Users\\Alex\\Pictures\\pro pic.jpg");
-            blob.upload(new FileInputStream(source), source.length());
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            // Use the current time as the default values for the picker
+            final Calendar c = Calendar.getInstance();
+            int hour = c.get(Calendar.HOUR_OF_DAY);
+            int minute = c.get(Calendar.MINUTE);
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            // Create a new instance of TimePickerDialog and return it
+            return new TimePickerDialog(getActivity(), this, hour, minute,
+                    DateFormat.is24HourFormat(getActivity()));
+        }
+
+        public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+            // Do something with the time chosen by the user
+
+        }
+
+    }
+
+    private class MyTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            try
+            {
+                CloudStorageAccount storageAccount = CloudStorageAccount.parse(storageConnectionString);
+                CloudBlobClient blobClient = storageAccount.createCloudBlobClient();
+                CloudBlobContainer container = blobClient.getContainerReference("mycontainer");
+                container.createIfNotExists();
+                BlobContainerPermissions containerPermissions = new BlobContainerPermissions();
+                containerPermissions.setPublicAccess(BlobContainerPublicAccessType.CONTAINER);
+                container.uploadPermissions(containerPermissions);
+            }
+            catch (Exception e)
+            {
+                // Output the stack trace.
+                e.printStackTrace();
+            }
+            return null;
         }
     }
 
